@@ -1,0 +1,40 @@
+{
+  "name": "nanorpc-redis",
+  "version": "0.1.0",
+  "description": "A Redis based RPC library.",
+  "main": "./lib/index.js",
+  "types": "./lib/index.d.ts",
+  "files": [
+    "lib/",
+    "src/"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc -w",
+    "test": "tsc && node ./lib/index.test.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/shixiongfei/nanorpc-redis.git"
+  },
+  "keywords": [
+    "rpc",
+    "redis",
+    "redis-rpc",
+    "nanorpc"
+  ],
+  "author": "shixiongfei",
+  "license": "Apache-2.0",
+  "bugs": {
+    "url": "https://github.com/shixiongfei/nanorpc-redis/issues"
+  },
+  "homepage": "https://github.com/shixiongfei/nanorpc-redis#readme",
+  "devDependencies": {
+    "@types/node": "^20.12.2",
+    "@typescript-eslint/eslint-plugin": "^7.5.0",
+    "@typescript-eslint/parser": "^7.5.0",
+    "eslint": "^8.57.0",
+    "prettier": "^3.2.5",
+    "typescript": "^5.4.3"
+  }
+}
