@@ -35,7 +35,7 @@ const server = async () => {
   const server = createNanoRPCServer("rpc-test", redisUrl);
   await server.connect();
 
-  server.on("add", async (a: number, b: number) => a + b);
+  server.on("add", (a: number, b: number) => a + b);
 
   await server.run();
   await server.close();
