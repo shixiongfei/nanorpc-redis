@@ -36,5 +36,13 @@
     "eslint": "^8.57.0",
     "prettier": "^3.2.5",
     "typescript": "^5.4.3"
+  },
+  "dependencies": {
+    "async-mutex": "^0.5.0",
+    "eventemitter3": "^5.0.1",
+    "nanorpc-validator": "^0.1.2"
+  },
+  "peerDependencies": {
+    "redis": "^4.6.13"
   }
 }
