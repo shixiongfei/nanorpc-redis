@@ -14,6 +14,7 @@ import { createNanoRPCServer, createNanoRPCClient } from "./index.js";
 type AddRPCFunc = (a: number, b: number) => Promise<number | undefined>;
 
 const redisUrl = "redis://:123456@127.0.0.1:6379/0";
+let shutdown: (() => Promise<void>) | undefined = undefined;
 
 const client = async () => {
   const client = createNanoRPCClient(redisUrl);
@@ -29,6 +30,10 @@ const client = async () => {
   );
 
   await client.close();
+
+  if (shutdown) {
+    await shutdown();
+  }
 };
 
 const server = async () => {
@@ -37,8 +42,7 @@ const server = async () => {
 
   server.on("add", (a: number, b: number) => a + b);
 
-  await server.run();
-  await server.close();
+  shutdown = server.run();
 };
 
 const test = async () => await Promise.all([server(), client()]);

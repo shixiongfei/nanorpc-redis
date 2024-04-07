@@ -17,12 +17,14 @@ import { NanoRPCBase, NanoRPCCode } from "./base.js";
 import { RedisType, withRedis } from "./db.js";
 
 export class NanoRPCServer extends NanoRPCBase {
+  private running: boolean;
   private readonly name: string;
   private readonly events: EventEmitter;
   private readonly methods: { [method: string]: boolean };
 
   constructor(name: string, redisOrUrl: RedisType | string) {
     super(redisOrUrl);
+    this.running = false;
     this.name = name;
     this.events = new EventEmitter();
     this.methods = {};
@@ -72,59 +74,75 @@ export class NanoRPCServer extends NanoRPCBase {
     return this;
   }
 
-  async run(queued = false) {
-    const mutex = queued ? new Mutex() : undefined;
+  run(queued = false) {
+    if (!this.running) {
+      this.running = true;
 
-    await withRedis(this.redis, async (redis) => {
-      for (;;) {
-        const payload = await redis.blPop(`NanoRPCs:${this.name}`, 0);
+      (async () => {
+        const mutex = queued ? new Mutex() : undefined;
 
-        if (!payload) {
-          continue;
-        }
+        await this.connect();
 
-        try {
-          const rpc = JSON.parse(payload.element) as NanoRPC<string, unknown[]>;
+        await withRedis(this.redis, async (redis) => {
+          while (this.running) {
+            const payload = await redis.blPop(`NanoRPCs:${this.name}`, 0.25);
 
-          if (!("method" in rpc) || typeof rpc.method !== "string") {
-            continue;
+            if (!payload) {
+              continue;
+            }
+
+            try {
+              const rpc = JSON.parse(payload.element) as NanoRPC<
+                string,
+                unknown[]
+              >;
+
+              if (!("method" in rpc) || typeof rpc.method !== "string") {
+                continue;
+              }
+
+              const validator = this.validators.getValidator(rpc.method);
+
+              if (validator && !validator(rpc)) {
+                continue;
+              }
+
+              if (!(rpc.method in this.methods)) {
+                const reply = createNanoReply(
+                  rpc.id,
+                  NanoRPCCode.MissingMethod,
+                  "Missing Method",
+                );
+
+                await redis.rPush(
+                  `NanoRPCs:${this.name}:${rpc.method}:${rpc.id}`,
+                  JSON.stringify(reply),
+                );
+
+                continue;
+              }
+
+              if (mutex) {
+                await mutex.acquire();
+              }
+
+              this.events.emit(rpc.method, rpc, mutex);
+
+              if (mutex) {
+                await mutex.waitForUnlock();
+              }
+            } catch (error) {
+              continue;
+            }
           }
+        });
+      })();
+    }
 
-          const validator = this.validators.getValidator(rpc.method);
-
-          if (validator && !validator(rpc)) {
-            continue;
-          }
-
-          if (!(rpc.method in this.methods)) {
-            const reply = createNanoReply(
-              rpc.id,
-              NanoRPCCode.MissingMethod,
-              "Missing Method",
-            );
-
-            await redis.rPush(
-              `NanoRPCs:${this.name}:${rpc.method}:${rpc.id}`,
-              JSON.stringify(reply),
-            );
-
-            continue;
-          }
-
-          if (mutex) {
-            await mutex.acquire();
-          }
-
-          this.events.emit(rpc.method, rpc, mutex);
-
-          if (mutex) {
-            await mutex.waitForUnlock();
-          }
-        } catch (error) {
-          continue;
-        }
-      }
-    });
+    return async () => {
+      this.running = false;
+      await this.close();
+    };
   }
 }
 
