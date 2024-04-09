@@ -19,7 +19,7 @@ export enum NanoRPCCode {
 }
 
 export class NanoRPCBase {
-  readonly validators: NanoValidator;
+  public readonly validators: NanoValidator;
   protected readonly redis: RedisType;
   protected readonly maintenance: boolean;
 
