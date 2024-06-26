@@ -18,9 +18,9 @@ export class NanoRPCClient extends NanoRPCBase {
     super(redisOrUrl);
   }
 
-  async apply<T, M extends string, P extends Array<unknown>>(
+  async apply<T, P extends Array<unknown>>(
     name: string,
-    method: M,
+    method: string,
     args: P,
   ) {
     const payload = await withRedis(this.redis, async (redis) => {
@@ -58,19 +58,16 @@ export class NanoRPCClient extends NanoRPCBase {
     return reply.value;
   }
 
-  async call<T, M extends string, P extends Array<unknown>>(
+  async call<T, P extends Array<unknown>>(
     name: string,
-    method: M,
+    method: string,
     ...args: P
   ) {
-    return this.apply<T, M, P>(name, method, args);
+    return this.apply<T, P>(name, method, args);
   }
 
-  invoke<T, M extends string, P extends Array<unknown>>(
-    name: string,
-    method: M,
-  ) {
-    return async (...args: P) => await this.apply<T, M, P>(name, method, args);
+  invoke<T, P extends Array<unknown>>(name: string, method: string) {
+    return async (...args: P) => await this.apply<T, P>(name, method, args);
   }
 }
 

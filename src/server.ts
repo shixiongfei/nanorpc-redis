@@ -30,15 +30,15 @@ export class NanoRPCServer extends NanoRPCBase {
     this.methods = {};
   }
 
-  on<T, M extends string, P extends Array<unknown>>(
-    method: M,
+  on<T, P extends Array<unknown>>(
+    method: string,
     func: (...args: P) => T | Promise<T>,
   ) {
     if (method in this.methods) {
       throw new Error(`${method} method already registered`);
     }
 
-    this.events.on(method, async (rpc: NanoRPC<M, P>, mutex?: Mutex) => {
+    this.events.on(method, async (rpc: NanoRPC<P>, mutex?: Mutex) => {
       try {
         const result = func(...rpc.arguments);
         const retval = isPromise(result) ? await result : result;
@@ -81,7 +81,7 @@ export class NanoRPCServer extends NanoRPCBase {
       (async () => {
         const parseNanoRPC = (text: string) => {
           try {
-            return JSON.parse(text) as NanoRPC<string, unknown[]>;
+            return JSON.parse(text) as NanoRPC<unknown[]>;
           } catch (error) {
             return undefined;
           }
