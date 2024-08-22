@@ -10,7 +10,7 @@
  */
 
 import { isPromise } from "node:util/types";
-import { EventEmitter } from "eventemitter3";
+import { EventEmitter } from "node:events";
 import { Mutex } from "async-mutex";
 import { NanoRPC, createNanoReply } from "nanorpc-validator";
 import { NanoRPCBase, NanoRPCCode } from "./base.js";
