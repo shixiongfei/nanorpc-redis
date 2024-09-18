@@ -30,18 +30,18 @@
   },
   "homepage": "https://github.com/shixiongfei/nanorpc-redis#readme",
   "devDependencies": {
-    "@types/node": "^20.12.2",
-    "@typescript-eslint/eslint-plugin": "^7.5.0",
-    "@typescript-eslint/parser": "^7.5.0",
-    "eslint": "^8.57.0",
-    "prettier": "^3.2.5",
-    "typescript": "^5.4.3"
+    "@types/node": "^22.5.5",
+    "@typescript-eslint/eslint-plugin": "^8.6.0",
+    "@typescript-eslint/parser": "^8.6.0",
+    "eslint": "^9.10.0",
+    "prettier": "^3.3.3",
+    "typescript": "^5.6.2"
   },
   "dependencies": {
     "async-mutex": "^0.5.0",
-    "nanorpc-validator": "^0.2.0"
+    "nanorpc-validator": "^0.3.1"
   },
   "peerDependencies": {
-    "redis": "^4.6.13"
+    "redis": "^4.7.0"
   }
 }

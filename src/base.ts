@@ -12,10 +12,16 @@
 import { NanoValidator, createNanoValidator } from "nanorpc-validator";
 import { RedisType, createRedis } from "./db.js";
 
-export enum NanoRPCCode {
+export enum NanoRPCStatus {
   OK = 0,
   Exception,
   MissingMethod,
+}
+
+export enum NanoRPCErrCode {
+  DuplicateMethod = -1,
+  MethodNotFound = -2,
+  CallError = -3,
 }
 
 export class NanoRPCBase {

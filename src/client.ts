@@ -9,8 +9,8 @@
  * https://github.com/shixiongfei/nanorpc-redis
  */
 
-import { NanoReply, createNanoRPC } from "nanorpc-validator";
-import { NanoRPCBase, NanoRPCCode } from "./base.js";
+import { NanoRPCError, NanoReply, createNanoRPC } from "nanorpc-validator";
+import { NanoRPCBase, NanoRPCErrCode, NanoRPCStatus } from "./base.js";
 import { RedisType, withRedis } from "./db.js";
 
 export class NanoRPCClient extends NanoRPCBase {
@@ -18,13 +18,9 @@ export class NanoRPCClient extends NanoRPCBase {
     super(redisOrUrl);
   }
 
-  async apply<T, P extends Array<unknown>>(
-    name: string,
-    method: string,
-    args: P,
-  ) {
+  async apply<T, P extends object>(name: string, method: string, params?: P) {
     const payload = await withRedis(this.redis, async (redis) => {
-      const rpc = createNanoRPC(method, args);
+      const rpc = createNanoRPC(method, params);
 
       const result = await Promise.all([
         redis.rPush(`NanoRPCs:${name}`, JSON.stringify(rpc)),
@@ -35,7 +31,10 @@ export class NanoRPCClient extends NanoRPCBase {
     });
 
     if (!payload) {
-      throw new Error(`NanoRPC call ${name}:${method} received null message`);
+      throw new NanoRPCError(
+        NanoRPCErrCode.CallError,
+        `Call ${name}:${method} received null message`,
+      );
     }
 
     const reply = JSON.parse(payload.element) as NanoReply<T>;
@@ -48,14 +47,20 @@ export class NanoRPCClient extends NanoRPCBase {
       );
       const error = lines.join("\n");
 
-      throw new Error(`NanoRPC call ${name}:${method} ${error}`);
+      throw new NanoRPCError(
+        NanoRPCErrCode.CallError,
+        `Call ${name}:${method} ${error}`,
+      );
     }
 
-    if (reply.code !== NanoRPCCode.OK) {
-      throw new Error(`NanoRPC call ${name}:${method} ${reply.message}`);
+    if (reply.status !== NanoRPCStatus.OK) {
+      throw new NanoRPCError(
+        reply.error?.code ?? NanoRPCErrCode.CallError,
+        `Call ${name}:${method} ${reply.error?.message ?? "unknown error"}`,
+      );
     }
 
-    return reply.value;
+    return reply.result;
   }
 
   async call<T, P extends Array<unknown>>(
@@ -63,7 +68,7 @@ export class NanoRPCClient extends NanoRPCBase {
     method: string,
     ...args: P
   ) {
-    return this.apply<T, P>(name, method, args);
+    return await this.apply<T, P>(name, method, args);
   }
 
   invoke<T, P extends Array<unknown>>(name: string, method: string) {

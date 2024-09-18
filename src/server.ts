@@ -12,8 +12,9 @@
 import { isPromise } from "node:util/types";
 import { EventEmitter } from "node:events";
 import { Mutex } from "async-mutex";
-import { NanoRPC, createNanoReply } from "nanorpc-validator";
-import { NanoRPCBase, NanoRPCCode } from "./base.js";
+import { NanoRPC, NanoRPCError } from "nanorpc-validator";
+import { createNanoRPCError, createNanoReply } from "nanorpc-validator";
+import { NanoRPCBase, NanoRPCErrCode, NanoRPCStatus } from "./base.js";
 import { RedisType, withRedis } from "./db.js";
 
 export class NanoRPCServer extends NanoRPCBase {
@@ -35,29 +36,48 @@ export class NanoRPCServer extends NanoRPCBase {
     func: (...args: P) => T | Promise<T>,
   ) {
     if (method in this.methods) {
-      throw new Error(`${method} method already registered`);
+      throw new NanoRPCError(
+        NanoRPCErrCode.DuplicateMethod,
+        `${method} method already registered`,
+      );
     }
 
-    this.events.on(method, async (rpc: NanoRPC<P>, mutex?: Mutex) => {
+    this.events.on(method, async (rpc: NanoRPC<object>, mutex?: Mutex) => {
       try {
-        const result = func(...rpc.arguments);
+        const params = (
+          Array.isArray(rpc.params)
+            ? rpc.params
+            : rpc.params
+              ? [rpc.params]
+              : []
+        ) as P;
+        const result = func(...params);
         const retval = isPromise(result) ? await result : result;
-        const reply = createNanoReply(rpc.id, NanoRPCCode.OK, "OK", retval);
+        const reply = createNanoReply(rpc.id, NanoRPCStatus.OK, retval);
 
         await this.redis.rPush(
           `NanoRPCs:${this.name}:${method}:${rpc.id}`,
           JSON.stringify(reply),
         );
       } catch (error) {
-        const reply = createNanoReply(
-          rpc.id,
-          NanoRPCCode.Exception,
-          typeof error === "string"
-            ? error
-            : error instanceof Error
-              ? error.message
-              : `${error}`,
-        );
+        const reply =
+          error instanceof NanoRPCError
+            ? createNanoRPCError(
+                rpc.id,
+                NanoRPCStatus.Exception,
+                error.code,
+                error.message,
+              )
+            : createNanoRPCError(
+                rpc.id,
+                NanoRPCStatus.Exception,
+                NanoRPCErrCode.CallError,
+                typeof error === "string"
+                  ? error
+                  : error instanceof Error
+                    ? error.message
+                    : `${error}`,
+              );
 
         await this.redis.rPush(
           `NanoRPCs:${this.name}:${method}:${rpc.id}`,
@@ -81,7 +101,7 @@ export class NanoRPCServer extends NanoRPCBase {
       (async () => {
         const parseNanoRPC = (text: string) => {
           try {
-            return JSON.parse(text) as NanoRPC<unknown[]>;
+            return JSON.parse(text) as NanoRPC<object>;
           } catch (error) {
             return undefined;
           }
@@ -115,9 +135,10 @@ export class NanoRPCServer extends NanoRPCBase {
             }
 
             if (!(rpc.method in this.methods)) {
-              const reply = createNanoReply(
+              const reply = createNanoRPCError(
                 rpc.id,
-                NanoRPCCode.MissingMethod,
+                NanoRPCStatus.MissingMethod,
+                NanoRPCErrCode.MethodNotFound,
                 "Missing Method",
               );
 
