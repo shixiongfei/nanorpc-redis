@@ -9,7 +9,7 @@
  * https://github.com/shixiongfei/nanorpc-redis
  */
 
-export { NanoRPCError } from "nanorpc-validator";
+export * from "nanorpc-validator";
 export * from "./base.js";
 export * from "./server.js";
 export * from "./client.js";
